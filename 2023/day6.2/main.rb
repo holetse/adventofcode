@@ -17,14 +17,11 @@ winning_options = []
 
 File.open("input.txt") do |f|
     times = /^Time:(?<times>(\s+\d+)+)/.match(f.gets)
-    times[:times].split.each do |time|
-        races.append(Race.new(time.to_i))
-    end
-
+    time = times[:times].split.join('')
+    races.append(Race.new(time.to_i))
     distances = /^Distance:(?<distances>(\s+\d+)+)/.match(f.gets)
-    distances[:distances].split.each_with_index do |distance, i|
-        races[i].distance = distance.to_i
-    end
+    distance = distances[:distances].split.join('')
+    races[0].distance = distance.to_i
 end
 
 races.each do |race|
