@@ -26,23 +26,21 @@ Mapping = Struct.new(:range, :dst_offset) do
 
     def map_range(rng)
         mapped_range = nil
-        remainder = nil
+        remainder = []
         if range.cover?(rng)
-            start = rng.begin - range.begin
-            mapped_range = (start + dst_range.begin)..(start + dst_range.begin + (rng.size - 1))
-        elsif rng.begin <= range.end && rng.end >= range.end
-            mapped_range = ((rng.begin - range.begin) + dst_range.begin)..(dst_range.end)
-            remainder = (range.end + 1)..rng.end
-        elsif rng.end >= range.begin && rng.begin <= range.begin
-            mapped_range = (dst_range.begin)..(dst_range.begin + (rng.end - range.begin))
-            remainder = rng.begin..(range.begin - 1)
+            mapped_range = map(rng.begin)..map(rng.end)
+        elsif rng.begin < range.begin && rng.end > range.end # begin & end overlap
+            mapped_range = dst_range
+            remainder = [rng.begin..(range.begin - 1), (range.end + 1)..rng.end]
+        elsif rng.begin >= range.begin && rng.end > range.end && rng.begin <= range.end  # end overlap
+            mapped_range = map(rng.begin)..(dst_range.end)
+            remainder = [(range.end + 1)..rng.end]
+        elsif rng.begin < range.begin && rng.end <= range.end && rng.end >= range.begin  # begin overlap
+            mapped_range = (dst_range.begin)..map(rng.end)
+            remainder = [rng.begin..(range.begin - 1)]
         else
-            remainder = rng
+            remainder = [rng]
         end
-
-        mr_size = mapped_range ? mapped_range.size : 0
-        r_size = remainder ? remainder.size : 0
-        raise "bad mapping: #{rng}, #{self}, #{mapped_range}, #{remainder}" if mr_size + r_size != rng.size
 
         return mapped_range, remainder
     end
@@ -58,28 +56,23 @@ Map = Struct.new(:name, :from, :to, :mappings) do
 
     def map_range(rng)
         ranges = []
-        remainder = rng
+        remainder = [rng]
         count = 0
-        while remainder
-            puts "remainder loop (#{name})"
+        while (r = remainder.pop)
             found = false
             mappings.each do |mapping|
-                mapped_range, new_remainder = mapping.map_range(remainder)
-                puts "iteration: #{mapped_range}, #{new_remainder}, #{mapping}, #{remainder}"
-                remainder = new_remainder
+                mapped_range, new_remainder = mapping.map_range(r)
                 if !mapped_range.nil?
+                    remainder.append(*new_remainder)
                     ranges.append(mapped_range)
                     found = true
                     break
                 end
             end
-            if !found && !remainder.nil?
-                puts "not found: #{rng}, #{remainder}, #{ranges}, #{self.name}"
-                ranges.append(remainder)
-                remainder = nil
+            if !found
+                ranges.append(r)
             end
         end
-        raise "bad mapping: #{rng}, #{ranges}" if rng.size != ranges.sum(&:size)
         ranges
     end
 end
@@ -91,7 +84,7 @@ seeds = []
 locations = []
 maps = {}
 
-File.open("example.txt") do |file|
+File.open("input.txt") do |file|
     seeds = seeds_r.match(file.readline)[:seeds].split.collect(&:to_i)
     category = nil
     while !file.eof? do
@@ -114,7 +107,6 @@ File.open("example.txt") do |file|
 end
 
 seed_ranges = seeds.each_slice(2).collect { |s, o| s..(s + o - 1) }
-puts "seed ranges: #{seed_ranges}"
 
 seed_ranges.each do |seed_range|
     category = 'seed'
@@ -129,26 +121,6 @@ seed_ranges.each do |seed_range|
 end
 
 locations.flatten!
-puts "counts: #{seed_ranges.sum(&:size)}, #{locations.sum(&:size)}"
-puts locations
 locations.collect!(&:begin)
 
-# soil_ranges = maps['seed'].map_range(seed_ranges[0])
-
-# puts soil_ranges.inspect
-# puts "####"
-
-
-# fert_ranges = soil_ranges.collect {|r| maps['soil'].map_range(r) }
-# fert_ranges.flatten!
-
-# puts "seed: #{seed_ranges[0]}, #{seed_ranges[0].size}"
-# puts "soil: #{soil_ranges}, #{soil_ranges.sum(&:size)}"
-# puts "fert: #{fert_ranges}, #{fert_ranges.sum(&:size)}"
-
-# puts maps['seed'].map_range(seed_ranges[0])
-
-# puts locations
 puts "minimum location: #{locations.min}"
-
-# the right answer is, 31161857, generated from seed 3267749434
