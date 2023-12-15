@@ -31,10 +31,10 @@ Record = Struct.new(:fragment, :spans) do
         end
     
         damaged_fragment = fragment.dup
-        damaged_fragment[unknown] = '.'
+        damaged_fragment[unknown] = '#'
     
         operational_fragment = fragment.dup
-        operational_fragment[unknown] = '#'
+        operational_fragment[unknown] = '.'
         
         return calculate_possibilites(damaged_fragment, spans) + calculate_possibilites(operational_fragment, spans)
     end
