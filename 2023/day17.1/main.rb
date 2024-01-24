@@ -1,15 +1,11 @@
 require 'pqueue'
 
-Cell = Struct.new(:value, :row, :col, :matrix, :walked) do
+Cell = Struct.new(:value, :row, :col, :matrix) do
     def neighbors(exclude_dirs=[])
         offsets = [
             [-1, 0], [0, -1], [0, 1], [1, 0]
         ]
         (offsets - exclude_dirs).collect { |o| matrix.get_cell(row + o.first, col + o.last) }.compact
-    end
-
-    def walked?
-        !!(walked&.values&.length >= 1)
     end
 
     def direction(cell)
@@ -110,63 +106,13 @@ class City < Matrix
 
     MUST_TURN_STEPS = 3
 
-    def cartwalk(row, col, path, must_turn_steps, destination)
-        cell = get_cell(row, col)
-        return nil if !cell || path.include?(cell)
-
-        last_cell = path.last
-        path.append(cell)
-        heatloss = path[1..-1].sum(&:value) # we don't include the starting square
-        
-        return [path, heatloss] if cell == destination
-
-        if last_cell
-            dir = [row - last_cell.row, col - last_cell.col]
-            cell.walked ||= {}
-            if cell.walked[dir]
-                visit_heatloss, visit_steps = cell.walked[dir]
-                if visit_heatloss <= heatloss 
-                    if visit_steps >= must_turn_steps
-                        return nil
-                    end
-                end
-            end
-            cell.walked[dir] = [heatloss, must_turn_steps]
-        end
-
-        options = cell.neighbors - [last_cell]
-
-        paths = options.collect { |c| [c, [c.row - cell.row, c.col - cell.col], c.value] }.sort { |a, b| a.last <=> b.last }.collect do |opt|
-            c, next_dir, gradient = opt
-            if must_turn_steps > 0
-                new_must_turn_steps = if next_dir == dir
-                    must_turn_steps - 1
-                else
-                    MUST_TURN_STEPS - 1
-                end
-                cartwalk(c.row, c.col, path.dup, new_must_turn_steps, destination)
-            elsif next_dir != dir
-                cartwalk(c.row, c.col, path.dup, MUST_TURN_STEPS - 1, destination)
-            else
-                nil
-            end
-        end
-        coolest_path = paths.compact.min { |a, b| a.last <=> b.last }
-        coolest_path
-    end
-
-    def cartpath(start=[0,0], finish=[rows.length - 1, cols.length - 1])
-        cartwalk(*start, [], MUST_TURN_STEPS - 1, get_cell(*finish))
-    end
-
     def cartpath_fast(start=[0,0], finish=[rows.length - 1, cols.length - 1])
         pathtree = cart_pathtree(start)
         pathtree[get_cell(*finish)]
     end
 
-    def cart_buildnodes(start=[0,0], turn_after = MUST_TURN_STEPS, finish=[rows.length - 1, cols.length - 1])
+    def cart_buildnodes(start=[0,0], turn_after = MUST_TURN_STEPS)
         start_cell = get_cell(*start)
-        finish_cell = get_cell(*finish)
         start_node = Node.new(start_cell.value, 0, nil, start_cell)
         remaining = [start_node]
         visited = {}
@@ -265,4 +211,4 @@ end
 puts city.label_figure(city.visualize), ''
 
 fast_heatloss = city.cartpath_fast
-puts puts "Heatloss: #{fast_heatloss}"
+puts "Heatloss: #{fast_heatloss}"
