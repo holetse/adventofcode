@@ -1,0 +1,13 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    pqueue (2.1.0)
+
+PLATFORMS
+  x86_64-darwin-23
+
+DEPENDENCIES
+  pqueue
+
+BUNDLED WITH
+   2.4.10
