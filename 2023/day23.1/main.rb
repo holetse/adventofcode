@@ -250,8 +250,50 @@ class Maze < Matrix
         sorted_nodes
     end
 
+    def longest_path_bellman_ford(nodes, adjacencies, source)
+        distances = Hash[nodes.collect { |n| [n, Float::INFINITY] }]
+        distances[source] = 0
+        parents = Hash[nodes.collect { |n| [n, nil] }]
+        edges = adjacencies.collect(&:last).flatten
+
+        (nodes.length - 1).times do
+            relaxed = false
+            edges.each do |edge|
+                if distances[edge.from] + -edge.weight < distances[edge.to]
+                    distances[edge.to] = distances[edge.from] + -edge.weight
+                    parents[edge.to] = edge.from
+                    relaxed = true
+                end
+            end
+            return [distances, parents] if !relaxed # there isn't a negative cycle or any more edges to relax
+        end
+
+        edges.each do |edge|
+            if distances[edge.from] + -edge.weight < distances[edge.to]
+                parents[edge.to] = edge.from
+                visited = Hash[nodes.collect { |n| [n, false] }]
+                visited[edge.to] = true
+                next_node = edge.from
+                while !visited[next_node]
+                    visited[next_node] = true
+                    next_node = parents[next_node]
+                end
+                cycle = [next_node]
+                root_node = next_node
+                next_node = parents[root_node]
+                while root_node != next_node
+                    cycle.prepend(next_node)
+                    next_node = parents[next_node]
+                end
+                raise "negative cycle found: #{cycle}"
+            end
+        end
+
+        [distances, parents]
+    end
+
     # nodes must be sorted topologically
-    def longest_path(nodes, adjacencies)
+    def longest_path_topological(nodes, adjacencies)
         distances = Hash[nodes.collect { |n| [n, Float::INFINITY] }]
         distances[nodes.first] = 0
         parents = Hash[nodes.collect { |n| [n, nil] }]
@@ -266,6 +308,11 @@ class Maze < Matrix
         end
 
         [distances, parents]
+    end
+
+    def longest_path(nodes, adjacencies)
+        # longest_path_topological(nodes, adjacencies)
+        longest_path_bellman_ford(nodes, adjacencies, nodes.first)
     end
 
 end
