@@ -184,13 +184,32 @@ class SparseGarden
        visited.to_a
     end
 
+    def wander_fast(steps, start = @start, limit = false)
+        visited = Set.new()
+        visited_at = {}
+        remaining = [[start, 0]]
+        while (node, taken = remaining.shift) && taken <= steps
+            x, y = node
+            neighbors = neighbors_coordinates(x, y).select { |coords| get_cell(*coords, limit)&.ground? }
+            neighbors.each do |n|
+                if !visited.include?(n)
+                    visited.add(n)
+                    visited_at[n] = taken
+                    remaining.append([n, taken + 1])
+                end
+            end
+        end
+
+        Hash[visited_at.select{ |p, b| b.odd? != steps.to_i.odd? }.to_a]
+    end
+
     def wander_far(steps, start = @start) 
         h, w = @dimensions
         n = (steps - start.first) / w.to_r
         
         raise 'general solution does not apply' if w != h || n.denominator != 1
 
-        p = ->(s, n) { wander(n, s, true).length }
+        p = ->(s, n) { wander_fast(n, s, true).length }
         rem = steps - (n * w)
         st = w - 1
         sa = w + rem - 1
