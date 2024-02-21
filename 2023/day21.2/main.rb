@@ -1,3 +1,6 @@
+require 'matrix'
+
+
 Cell = Struct.new(:value, :row, :col, :matrix, :reachable) do
     def start?
         value == 'S'
@@ -31,7 +34,7 @@ Cell = Struct.new(:value, :row, :col, :matrix, :reachable) do
     end
 end
 
-class Matrix
+class CellMatrix
     include Enumerable
 
     def initialize(rows, *args)
@@ -110,7 +113,7 @@ class Matrix
     end
 end
 
-class Garden < Matrix
+class Garden < CellMatrix
     def wander_from(starting_points)
         ending_points = Set.new
         starting_points.each do |cell|
@@ -226,6 +229,47 @@ class SparseGarden
 
         ((n - 1) * (n - 1) * o) + (n * n * e) + ((n - 1) * a) + (n * b) + t
     end
+
+    def wander_poly(steps)
+        h, w = @dimensions
+        n = (steps - @start.first) / w.to_r
+        
+        raise 'poly solution does not apply' if w != h || n.denominator != 1
+        
+        @constants ||= calculate_poly_constants
+        a, b, c = @constants
+
+        (a * (steps * steps)) + (b * steps) + c
+    end
+
+    def calculate_steps(n)
+        h, w = @dimensions
+        (n * w) + @start.first
+    end
+
+    def calculate_poly_constants(ns=[2, 4, 6, 8])
+        h, w = @dimensions
+
+        raise 'poly solution does not apply' if w != h || @start.first != @start.last
+
+        steps = ns.collect do |n|
+            calculate_steps(n)
+        end
+        reached = steps.collect do |s|
+            wander_fast(s, @start).length
+        end
+
+        polynomial_regression(steps, reached, 2)
+    end
+
+    def polynomial_regression(x, y, degree)
+        rows = x.map do |i|
+            (0..degree).map { |power| (i ** power).to_r }
+        end
+        mx = Matrix.rows(rows)
+        my = Matrix.columns([y])
+        ((mx.transpose * mx).inv * mx.transpose * my).transpose.row(0).to_a.reverse
+    end
     
     def visualize(points, start=@start, window=[points.collect(&:first).minmax, points.collect(&:last).minmax], margin=1)
         min_x, max_x = window.first
@@ -257,5 +301,6 @@ garden.each do |cell|
 end
 
 gardens = SparseGarden.new(garden)
+
 
 puts "Reachable: #{gardens.wander_far(26501365).to_i}"
