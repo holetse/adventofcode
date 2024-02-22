@@ -206,6 +206,41 @@ class SparseGarden
         Hash[visited_at.select{ |p, b| b.odd? != steps.to_i.odd? }.to_a]
     end
 
+    def wander_fast_cumulative(steps, start = @start, limit = false)
+        visited = Set.new()
+        remaining = [[start, 0]]
+        steps = Array(steps).collect(&:to_i)
+        results = []
+        visited_at = {}
+        count_even = 0
+        count_odd = 0
+        while (node, taken = remaining.shift)
+            if taken > steps.first
+                results.append(steps.first.odd? ? count_even : count_odd)
+                steps.shift
+                raise "out of steps" if steps.empty?
+            end
+            x, y = node
+            neighbors = neighbors_coordinates(x, y).select { |coords| get_cell(*coords, limit)&.ground? }
+            neighbors.each do |n|
+                if !visited.include?(n)
+                    visited.add(n)
+                    visited_at[n] = taken
+                    if taken.odd?
+                        count_odd += 1
+                    else
+                        count_even += 1
+                    end
+                    remaining.append([n, taken + 1]) if taken + 1 <= steps.last
+                end
+            end
+        end
+
+        results.append(steps.first.odd? ? count_even : count_odd)
+
+        results
+    end
+
     def wander_far(steps, start = @start) 
         h, w = @dimensions
         n = (steps - start.first) / w.to_r
@@ -247,7 +282,7 @@ class SparseGarden
         (n * w) + @start.first
     end
 
-    def calculate_poly_constants(ns=[2, 4, 6, 8])
+    def calculate_poly_constants(ns=[1, 2, 3, 4])
         h, w = @dimensions
 
         raise 'poly solution does not apply' if w != h || @start.first != @start.last
@@ -255,9 +290,7 @@ class SparseGarden
         steps = ns.collect do |n|
             calculate_steps(n)
         end
-        reached = steps.collect do |s|
-            wander_fast(s, @start).length
-        end
+        reached = wander_fast_cumulative(steps, @start)
 
         polynomial_regression(steps, reached, 2)
     end
