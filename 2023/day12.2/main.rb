@@ -10,7 +10,6 @@ Record = Struct.new(:fragment, :spans) do
     
         substr = string[0..(group - 1)]
         remaining = string[group..]
-        done = false
         preceeding_hash = preceeding.include?('#')
     
         possibilites = if substr.include?('.')
